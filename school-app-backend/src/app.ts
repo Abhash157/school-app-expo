@@ -9,16 +9,19 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins for development; restrict in production
+  credentials: true, // Allow credentials if needed
+}));
 app.use(express.json());
 app.use('/grades', gradeRoutes);
-app.use('/auth', authRouter);
+app.use('/api/auth', authRouter);
 
 app.get('/', (_req, res) => {
     res.send('Backend is working!');
   });
 
-app.listen(4000, () => console.log('🚀 Server ready at http://localhost:4000'));
+app.listen(4000, '0.0.00', () => console.log('🚀 Server ready at http://localhost:4000'));
 
 
 export default app;
