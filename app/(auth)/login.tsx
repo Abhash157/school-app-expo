@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
+import { Eye, EyeOff } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../../stores/useAuth';
 
 // Helper function for type-safe navigation
@@ -19,7 +21,9 @@ const navigate = (router: any, route: string) => {
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const { login, isLoading, clearError, isAuthenticated } = useAuth();
   const router = useRouter();
 
   // Handle successful login
@@ -46,9 +50,9 @@ export default function Login() {
       clearError();
       console.log('Attempting login with:', email);
       await login(email, password);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      // Error is already set in the store by the login function
+      setError(err.message);
     }
   };
 
@@ -59,118 +63,135 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Welcome Back</Text>
-        
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
+      {/* Header */}
+      <Svg
+        width="110%"
+        height="800"
+        viewBox="10 0 480 200"
+        preserveAspectRatio="none"
+        style={styles.svg}
+      >
+        <Path
+          d="M0,0 M0,40 C150,90 350,30 500,90 L500,0 L0,0 Z"
+          fill="#d1d5db"
+        />
+      </Svg>
+      <View style={styles.header}>
+        <Image source={require('@/assets/college-logo.png')} style={styles.logo} resizeMode="contain" />
+        <View style={styles.headerText}>
+          <Text style={styles.title}>SHAHID SMARAK COLLEGE</Text>
+          <Text style={styles.subtitle}>Kirtipur, Kathmandu</Text>
+      </View>
+      </View>
 
+      
+      {/* Form */}
+      <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="E-mail address"
+          keyboardType="email-address"
+          autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          placeholderTextColor="#999"
         />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholderTextColor="#999"
-        />
-
-        <Button title="Login" 
-        onPress={handleLogin} 
-        disabled={isLoading} />
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={handleSignUp}>
-            <Text style={styles.signUpText}>Sign up</Text>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </TouchableOpacity>
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity onPress={handleLogin} style={styles.button} disabled={isLoading}>
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.demoInfo}>
+          <Text style={styles.demoText}>Demo Accounts:</Text>
+          <Text style={styles.demoText}>Email: student@example.com</Text>
+          <Text style={styles.demoText}>Password: student123</Text>
+        </View>
+      </View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>© 2023 All Rights Reserved</Text>
+        <View style={styles.footerLinks}>
+          <Text style={styles.footerLink}>Terms & Conditions</Text>
+          <Text style={styles.footerLink}>Privacy Policy</Text>
         </View>
       </View>
     </View>
-  );
+  );  
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    padding: 20,
+  container: { flex: 1, position: 'relative', backgroundColor: '#fff', paddingHorizontal: 20, justifyContent: 'space-between' },
+  svg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    transform: [{ scaleX: -1 }],
   },
-  formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    textAlign: 'center',
-    color: '#333',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', marginTop: 60, justifyContent: 'center'},
+  headerText: { flex: 9, alignItems: 'center', justifyContent: 'center',   },
+  logo: { flex: 1, width: 50, height: 50, marginRight: 10 },
+  title: { fontWeight: 'bold', fontSize: 22, color: '#0a2f5c' },
+  subtitle: { fontSize: 14, color: 'gray' },
+  form: { marginTop: 40 },
   input: {
-    height: 50,
+    borderBottomWidth: 1,
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 16,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
+    borderRadius: 10,
+    borderColor: '#ccc',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    paddingVertical: 10,
+    marginBottom: 20,
+    paddingRight: 40,
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 10,
+    top: 12,
   },
   button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 8,
+    backgroundColor: '#0a2f5c',
+    padding: 14,
+    borderRadius: 10,
+    width: '37%',
+    alignSelf: 'center',
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonDisabled: {
-    backgroundColor: '#84c1ff',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  buttonText: { color: 'white', fontWeight: 'bold' },
+  error: { color: 'red', marginBottom: 10 },
+  demoInfo: { marginTop: 20 },
+  demoText: { fontSize: 12, color: 'gray' },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    paddingVertical: 10,
+    alignItems: 'center',
   },
-  footerText: {
-    color: '#666',
-  },
-  signUpText: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  errorContainer: {
-    backgroundColor: '#ffebee',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#d32f2f',
-    textAlign: 'center',
-  },
+  footerText: { fontSize: 12, color: 'white', backgroundColor: '#0a2f5c', width: '100%', textAlign: 'center', padding: 6 },
+  footerLinks: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 4 },
+  footerLink: { fontSize: 10, color: '#0a2f5c', marginHorizontal: 10 },
 });
