@@ -1,21 +1,11 @@
-// app/layout.tsx
+// app/_layout.tsx
 import { Slot } from 'expo-router';
+import { AuthProvider } from '../providers/AuthProvider';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
-export default function Layout() {
+export default function RootLayout() {
   return (
-    // <Stack>
-    //   <Stack.Screen name="Login" options={{ headerShown: false }} />
-    //   <Stack.Screen name="Dashboard" options={{ title: 'Dashboard' }} />
-    //   <Stack.Screen name="Grades" options={{ title: 'Grades' }} />
-    // </Stack>
-    <SafeAreaView style={{ flex: 1 }}>
+    <AuthProvider>
       <Slot />
-    </SafeAreaView>
-    // <Stack
-    //   screenOptions={{
-    //     headerShown: false,
-    //   }}
-    // />
+    </AuthProvider>
   );
 }

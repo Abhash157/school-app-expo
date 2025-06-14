@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 export default function HomeScreen() {
   const [grades, setGrades] = useState([]);
