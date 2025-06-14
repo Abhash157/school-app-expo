@@ -1,38 +1,98 @@
+// store/auth.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
-interface AuthState {
-  isAuthenticated: boolean;
-  token: string | null;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+interface User {
+  id: number;
+  email: string;
+  name?: string;
 }
 
-const API_URL = process.env.API_URL || 'http://192.168.1.65:4000/api/auth/login'; // Use environment variable for API URL
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  restoreSession: () => Promise<void>;
+}
 
-export const useAuthStore = create<AuthState>((set) => ({
-  isAuthenticated: false,
-  token: null,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isAuthLoading: true,
 
-  login: async (username: string, password: string) => {
-    try {
-      const response = await axios.post(API_URL, { email: username, password });
+      login: async (email, password) => {
+        try {
+          const res = await axios.post('http://192.168.1.65:4000/api/auth/login', {
+            email,
+            password,
+          });
+          const token = res.data.token;
+          const user = res.data.user || { id: 1, email }; // Replace if backend returns full user
 
-      const token = response.data.token;
-      // Persist token securely (e.g., AsyncStorage for React Native)
-      await AsyncStorage.setItem('authToken', token);
-      set({ isAuthenticated: true, token });
-    } catch (error) {
-      console.error('Login failed', error);
-      // Update state to reflect login failure
-      set({ isAuthenticated: false, token: null });
+          set({
+            token,
+            user,
+            isAuthenticated: true,
+            isAuthLoading: false,
+          });
+
+          return true;
+        } catch (err) {
+          console.error('Login failed:', err);
+          set({ isAuthLoading: false });
+          return false;
+        }
+      },
+
+      logout: () => {
+        set({ token: null, user: null, isAuthenticated: false });
+      },
+
+      restoreSession: async () => {
+        console.log('1. Starting restoreSession');
+        try {
+          const { token } = get();
+          console.log('2. Current token:', token);
+          
+          if (token) {
+            console.log('3. Token exists, setting authenticated');
+            set({ 
+              isAuthenticated: true,
+              isAuthLoading: false 
+            });
+          } else {
+            console.log('3. No token, setting not authenticated');
+            set({ 
+              isAuthenticated: false,
+              isAuthLoading: false 
+            });
+          }
+        } catch (error) {
+          console.error('4. Error in restoreSession:', error);
+          set({ 
+            isAuthenticated: false,
+            isAuthLoading: false 
+          });
+        }
+        console.log('5. Finished restoreSession');
+      },
+    }),
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
-  },
-
-  logout: async () => {
-    // Clear token from secure storage
-    await AsyncStorage.removeItem('authToken');
-    set({ isAuthenticated: false, token: null });
-  },
-}));
+  )
+);

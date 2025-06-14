@@ -2,7 +2,7 @@
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Button, TextInput, View } from 'react-native';
+import { Alert, Button, TextInput, View } from 'react-native';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -12,7 +12,18 @@ export default function Login() {
   const router = useRouter();
 
   const handleLogin = async () => {
-    await login(email, password);
+    try {
+      const success = await login(email, password);
+      if (success) {
+        router.replace('/dashboard');
+      } else {
+        // Show error to user
+        Alert.alert('Login Failed', 'Invalid credentials');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Error', 'An error occurred during login');
+    }
   };
 
   useEffect(() => {
