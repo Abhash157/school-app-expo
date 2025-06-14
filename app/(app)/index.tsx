@@ -1,23 +1,13 @@
 // app/(app)/index.tsx
-import { useRouter } from 'expo-router';
-import { Button, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
 import { useAuth } from '../../stores/useAuth';
 
-export default function Home() {
-  const { user, logout } = useAuth();
-  const router = useRouter();
+export default function Index() {
+  const { isAuthenticated, isLoading } = useAuth();
 
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Welcome {user?.name}!</Text>
-      <Button 
-        title="Go to Dashboard" 
-        onPress={() => router.push('/dashboard')} 
-      />
-      <Button 
-        title="Logout" 
-        onPress={logout} 
-      />
-    </View>
-  );
+  if (isLoading) {
+    return null; // or a loading spinner
+  }
+
+  return isAuthenticated ? <Redirect href="/(app)/dashboard" /> : <Redirect href="/login" />;
 }

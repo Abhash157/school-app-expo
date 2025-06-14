@@ -1,29 +1,38 @@
 // // providers/AuthProvider.tsx
 import { useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../stores/useAuth';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, restoreSession } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    const init = async () => {
+      await restoreSession();
+      setIsNavigationReady(true);
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!isNavigationReady || isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAppGroup = segments[0] === '(app)';
 
-    if (!isAuthenticated && !inAuthGroup) {
+    if (!isAuthenticated && inAppGroup) {
       // Redirect to login if not authenticated and not in auth group
       router.replace('/login');
     } else if (isAuthenticated && inAuthGroup) {
       // Redirect to home if authenticated and in auth group
       router.replace('/dashboard');
     }
-  }, [isAuthenticated, isLoading, segments, router]);
+  }, [isAuthenticated, isLoading, segments, router, isNavigationReady]);
 
-  if (isLoading) {
+  if (isLoading || !isNavigationReady) {
     return null; // or a loading spinner
   }
 
@@ -47,45 +56,3 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   return isAuthenticated ? <>{children}</> : null;
 }
-
-
-// providers/AuthProvider.tsx
-// import { useRouter, useSegments } from 'expo-router';
-// import { useEffect, useState } from 'react';
-// import { useAuth } from '../stores/useAuth';
-
-// export function AuthProvider({ children }: { children: React.ReactNode }) {
-//   const { isAuthenticated, isLoading, restoreSession } = useAuth();
-//   const segments = useSegments();
-//   const router = useRouter();
-//   const [isReady, setIsReady] = useState(false);
-
-//   // Restore session on mount
-//   useEffect(() => {
-//     const initAuth = async () => {
-//       await restoreSession();
-//       setIsReady(true);
-//     };
-//     initAuth();
-//   }, []);
-
-//   // Handle route protection
-//   useEffect(() => {
-//     if (!isReady || isLoading) return;
-
-//     const inAuthGroup = segments[0] === '(auth)';
-//     const inAppGroup = segments[0] === '(app)';
-
-//     if (!isAuthenticated && !inAuthGroup) {
-//       router.replace('/login');
-//     } else if (isAuthenticated && !inAppGroup) {
-//       router.replace('/dashboard');
-//     }
-//   }, [isAuthenticated, isLoading, segments, router, isReady]);
-
-//   if (isLoading || !isReady) {
-//     return null; // or a loading spinner
-//   }
-
-//   return <>{children}</>;
-// }

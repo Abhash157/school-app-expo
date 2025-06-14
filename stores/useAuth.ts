@@ -22,6 +22,33 @@ type AuthState = {
   restoreSession: () => Promise<void>;
 };
 
+async function validateCredentials(email: string, password: string): Promise<boolean> {
+  // Replace this with your actual validation logic
+  try {
+      const response = await fetch('http://192.168.1.65:4000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  
+  
+  // try {
+  //   const response = await fetch('your-api-endpoint/login', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ email, password }),
+  //   });
+  //   return response.ok;
+  // } catch (error) {
+  //   return false;
+  // }
+}
+
+
 export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -54,9 +81,27 @@ export const useAuth = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          // Replace with your actual login API call
-          const mockUser = { id: '1', email, name: 'Test User' };
-          const mockToken = 'mock-jwt-token';
+          // Simple validation - replace with your actual API call
+          if (!email || !password) {
+            throw new Error('Email and password are required');
+          }
+      
+          // Add your actual validation logic here
+          // For example, check against a list of valid users or call your API
+          const isValidCredentials = await validateCredentials(email, password);
+          
+          if (!isValidCredentials) {
+            throw new Error('Invalid email or password');
+          }
+      
+          // Only set authenticated state if credentials are valid
+          const mockUser = { 
+            id: '1', 
+            email, 
+            name: email.split('@')[0] // Simple way to create a username from email
+          };
+          const mockToken = 'valid-jwt-token';
+          
           set({ 
             user: mockUser, 
             token: mockToken, 
@@ -65,11 +110,12 @@ export const useAuth = create<AuthState>()(
           });
         } catch (error) {
           set({ 
-            error: 'Login failed. Please try again.',
+            error: error instanceof Error ? error.message : 'Login failed. Please try again.',
             isLoading: false 
           });
-          throw error;
+          throw error; // Re-throw to allow handling in the UI
         }
+      
       },
       
       register: async (userData) => {
