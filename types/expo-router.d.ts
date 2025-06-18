@@ -10,6 +10,10 @@ declare module 'expo-router' {
     '/dashboard': undefined;
     '/grades': undefined;
     '/profile': undefined;
+    '/attendance': undefined;
+    '/assignments': undefined;
+    '/teachers': undefined;
+    '/calendar': undefined;
     // Add other routes as needed
   };
 
