@@ -1,9 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { setAuthToken } from '../utils/auth';
 
-type User = {
-  id: string;
+
+export type User = {
+  _id: string;
+  id: string; // For backward compatibility
   email: string;
   name: string;
   // Add other user properties as needed
@@ -81,30 +84,52 @@ export const useAuth = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          // Simple validation - replace with your actual API call
+          // Input validation
           if (!email || !password) {
             throw new Error('Email and password are required');
           }
       
-          // Add your actual validation logic here
-          // For example, check against a list of valid users or call your API
-          const isValidCredentials = await validateCredentials(email, password);
+          // Make the login API call
+          const response = await fetch('http://192.168.1.65:4000/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
           
-          if (!isValidCredentials) {
-            throw new Error('Invalid email or password');
+          const responseData = await response.json();
+          console.log('Login response:', responseData);
+          
+          if (!response.ok) {
+            // Handle API error response
+            throw new Error(
+              responseData.message || 
+              responseData.error || 
+              `Login failed with status ${response.status}`
+            );
           }
-      
-          // Only set authenticated state if credentials are valid
-          const mockUser = { 
-            id: '1', 
-            email, 
-            name: email.split('@')[0] // Simple way to create a username from email
+          
+          // Backend only returns a token, so we'll create a minimal user object
+          const authToken = responseData.token;
+          if (!authToken) {
+            throw new Error('No token received from server');
+          }
+          
+          // Create a basic user object with the email and a generated ID
+          // Note: In a real app, you might want to fetch the user profile after login
+          const userId = email.split('@')[0]; // Simple ID generation from email
+          const user = {
+            _id: userId,
+            id: userId,
+            email: email,
+            name: email.split('@')[0], // Use the part before @ as name
           };
-          const mockToken = 'valid-jwt-token';
+          
+          // Save token to AsyncStorage
+          await setAuthToken(authToken);
           
           set({ 
-            user: mockUser, 
-            token: mockToken, 
+            user, 
+            token: authToken, 
             isAuthenticated: true,
             isLoading: false 
           });
@@ -122,19 +147,22 @@ export const useAuth = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           // Replace with your actual API call
-          // const response = await api.post('/auth/register', userData);
-          // const { user, token } = response.data;
-          
-          // Mock response for now
-          const mockUser = {
-            id: '1',
-            email: userData.email,
-            name: userData.name,
+          const response = await fetch('http://192.168.1.65:4000/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData),
+          });
+          const responseData = await response.json();
+          const user = {
+            _id: responseData.user._id,
+            id: responseData.user._id, // For backward compatibility
+            email: responseData.user.email,
+            name: responseData.user.name,
           };
           const mockToken = 'mock-jwt-token';
           
           set({
-            user: mockUser,
+            user: user,
             token: mockToken,
             isAuthenticated: true,
             isLoading: false,
