@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DashboardMenu } from '../../components/dashboard/DashboardMenu';
 import { ProfileSection } from '../../components/dashboard/ProfileSection';
+import { SummarySection } from '../../components/dashboard/SummarySection';
 import { useAuth } from '../../stores/useAuth';
 
 export default function DashboardPage() {
@@ -18,6 +19,14 @@ export default function DashboardPage() {
         dateOfBirth="2060/05/22"
         gender="Male"
         profileImageUrl={require('../../assets/abhash.jpeg')} // must use local asset or remote URL
+      />
+
+      <SummarySection 
+        attendance={{ present: 45, total: 50 }}
+        nextClass={{
+          subject: 'Mathematics',
+          time: '10:00 AM'
+        }}
       />
 
       <DashboardMenu />
