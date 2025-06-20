@@ -1,0 +1,23 @@
+export type RootStackParamList = {
+  index: undefined;
+  'auth/login': undefined;
+  'auth/register': undefined;
+  'auth/forgot-password': undefined;
+  'auth/reset-password': { token: string };
+  'auth/verify-email': { token: string };
+  'auth/verify-phone': { token: string };
+  'auth/admin-login': undefined;
+  'app/dashboard': undefined;
+  'app/profile': undefined;
+  'app/attendance': undefined;
+  'app/grades': undefined;
+  'app/routine': undefined;
+  'app/leave': undefined;
+  'app/settings': undefined;
+  'app/admin': undefined;
+  'app/admin/users': undefined;
+  'app/admin/attendance': undefined;
+  'app/admin/grades': undefined;
+  'app/admin/routine': undefined;
+  'app/admin/leave': undefined;
+};

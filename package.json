@@ -49,9 +49,12 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^24.0.3",
     "@types/react": "~19.0.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.8.3"
   },
   "private": true

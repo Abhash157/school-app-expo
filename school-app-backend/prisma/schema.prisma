@@ -9,11 +9,19 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+enum Role {
+  student
+  admin
+  teacher
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name      String?
+  username  String   @unique @default("user")
+  role      Role     @default(student)
   createdAt DateTime @default(now())
 }
 
