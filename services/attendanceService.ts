@@ -37,11 +37,16 @@ const generateMockCalendarData = (year: number, month: number) => {
     const date = new Date(year, month - 1, day);
     const dayOfWeek = date.getDay();
     
-    // Determine status (simplified logic for demo)
-    let status: 'present' | 'absent' | 'saturday' | 'holiday' | 'none' = 'present'; // default
-    if (dayOfWeek === 6) status = 'saturday';
-    if (day % 7 === 0) status = 'holiday'; // Every 7th day is a holiday for demo
-    if (day % 10 === 0) status = 'absent'; // Every 10th day is absent for demo
+    // Determine status
+    let status: 'present' | 'absent' | 'saturday' | 'holiday' | 'none';
+    
+    if (dayOfWeek === 6) {
+      status = 'holiday'; // Mark Saturdays as holidays
+    } else if (day % 10 === 0) {
+      status = 'absent'; // Every 10th day is absent for demo
+    } else {
+      status = 'present'; // Default to present for all other days
+    }
     
     week.push({ date: day, status });
     

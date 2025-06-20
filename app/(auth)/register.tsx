@@ -55,7 +55,7 @@ export default function Register() {
     try {
       clearError();
       console.log('Attempting registration with:', { email, name });
-      await register({ email, name, password });
+      await register({ email, name, password, _id: email.split('@')[0] });
     } catch (err) {
       console.error('Registration error:', err);
       // Error is already set in the store by the register function
@@ -73,7 +73,7 @@ export default function Register() {
         <Text style={styles.title}>Create Account</Text>
         
         <TextInput
-          style={styles.input}
+           style={styles.input}
           placeholder="Full Name"
           value={name}
           onChangeText={setName}

@@ -1,9 +1,9 @@
 import { Text, View } from "react-native";
 
-export function Attendance() {
+export default function Routine() {
     return (
         <View>
-            <Text>Attendance</Text>
+            <Text>Routine</Text>
         </View>
     );
 }

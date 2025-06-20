@@ -1,9 +1,10 @@
-import { Feather } from '@expo/vector-icons';
-import { Check, X } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
-import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator, Alert, RefreshControl } from 'react-native';
-import { fetchMonthlyAttendance, generateTestData } from '../../services/attendanceService';
+import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { fetchMonthlyAttendance } from '../../services/attendanceService';
 import { useAuth } from '../../stores/useAuth';
+
+type ViewType = 'week' | 'month';
 
 // Type definitions
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -38,7 +39,7 @@ const getStatusStyle = (status: string) => {
     case 'holiday':
       return { 
         bg: '#FFF9C4', // light yellow
-        text: '#F57F17', // dark yellow
+        text: '#FF2222', // red 
         icon: null 
       };
     default:
@@ -50,11 +51,84 @@ const getStatusStyle = (status: string) => {
   }
 };
 
+const styles = {
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    padding: 2,
+    marginBottom: 16,
+    alignSelf: 'center',
+  },
+  toggleButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+  },
+  toggleButtonActive: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleButtonText: {
+    fontWeight: '500',
+  },
+  toggleButtonTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  dateRangeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  dateRangeText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  calendarContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  weekViewContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  dayContainer: {
+    alignItems: 'center',
+    padding: 8,
+  },
+  dayHeader: {
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  dayContent: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+} as const;
+
 export default function AttendanceScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [calendarData, setCalendarData] = useState<CalendarWeek[]>([]);
+  const [viewType, setViewType] = useState<ViewType>('month');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState('');
+  const [currentYear, setCurrentYear] = useState(0);
   const [stats, setStats] = useState({
     totalDays: 0,
     presentDays: 0,
@@ -63,9 +137,33 @@ export default function AttendanceScreen() {
     holidays: 0,
     workingDays: 0
   });
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState('');
-  const [currentYear, setCurrentYear] = useState(0);
+
+  // Calculate date range based on view type
+  const { startDate, endDate } = useMemo(() => {
+    const date = new Date(currentDate);
+    if (viewType === 'week') {
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust to start on Monday
+      const start = new Date(date);
+      start.setDate(diff);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return { startDate: start, endDate: end };
+    } else {
+      // Month view
+      const start = new Date(date.getFullYear(), date.getMonth(), 1);
+      const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      return { startDate: start, endDate: end };
+    }
+  }, [currentDate, viewType]);
+
+  // Format date range for display
+  const dateRangeText = useMemo(() => {
+    if (viewType === 'week') {
+      return `${startDate.getDate()} ${startDate.toLocaleString('default', { month: 'short' })} - ${endDate.getDate()} ${endDate.toLocaleString('default', { month: 'short' })} ${endDate.getFullYear()}`;
+    }
+    return `${currentMonth} ${currentYear}`;
+  }, [viewType, startDate, endDate, currentMonth, currentYear]);
 
   const loadAttendanceData = async (year: number, month: number) => {
     try {
@@ -96,115 +194,78 @@ export default function AttendanceScreen() {
     }
   };
 
-  const handleGenerateTestData = async () => {
-    try {
-      if (!user?._id) {
-        throw new Error('User not authenticated');
-      }
-      
-      setRefreshing(true);
-      await generateTestData(user._id);
-      await loadAttendanceData(currentDate.getFullYear(), currentDate.getMonth() + 1);
-      Alert.alert('Success', 'Test data generated successfully');
-    } catch (error) {
-      console.error('Error generating test data:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to generate test data');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const changeMonth = (increment: number) => {
+  const changeDateRange = (increment: number) => {
     const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + increment);
+    if (viewType === 'week') {
+      newDate.setDate(newDate.getDate() + (increment * 7));
+    } else {
+      newDate.setMonth(newDate.getMonth() + increment);
+    }
     setCurrentDate(newDate);
     loadAttendanceData(newDate.getFullYear(), newDate.getMonth() + 1);
   };
 
-  useEffect(() => {
-    const now = new Date();
-    loadAttendanceData(now.getFullYear(), now.getMonth() + 1);
-  }, [user?._id]);
+  const toggleViewType = () => {
+    setViewType(prev => prev === 'month' ? 'week' : 'month');
+  };
 
-  if (loading && !refreshing) {
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    loadAttendanceData(currentDate.getFullYear(), currentDate.getMonth() + 1);
+  }, [currentDate]);
+
+  useEffect(() => {
+    loadAttendanceData(currentDate.getFullYear(), currentDate.getMonth() + 1);
+  }, []);
+
+  // Render week view
+  const renderWeekView = () => {
+    const startDay = new Date(startDate);
+    
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0d47a1" />
-        <Text style={{ marginTop: 10 }}>Loading attendance data...</Text>
+      <View style={styles.weekViewContainer}>
+        {Array(7).fill(0).map((_, index) => {
+          const day = new Date(startDay);
+          day.setDate(startDay.getDate() + index);
+          const dayData = calendarData.flat().find(d => d.date === day.getDate() && d.date !== 0);
+          const { bg, text, icon } = getStatusStyle(dayData?.status || 'none');
+          
+          return (
+            <View key={index} style={styles.dayContainer}>
+              <Text style={styles.dayHeader}>{weekdays[day.getDay()].substring(0, 1)}</Text>
+              <View style={[styles.dayContent, { backgroundColor: bg }]}>
+                <Text style={{ color: text, fontSize: 14, fontWeight: '500' }}>
+                  {day.getDate()}
+                </Text>
+                {icon}
+              </View>
+            </View>
+          );
+        })}
       </View>
     );
-  }
+  };
 
-  return (
-    <ScrollView 
-      contentContainerStyle={{ padding: 16 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => loadAttendanceData(currentDate.getFullYear(), currentDate.getMonth() + 1)}
-        />
+  // Render month view
+  const renderMonthView = () => {
+    // Ensure each week has exactly 7 days by filling with empty days if needed
+    const normalizedWeeks = calendarData.map(week => {
+      const weekCopy = [...week];
+      while (weekCopy.length < 7) {
+        weekCopy.push({ date: 0, status: 'none' });
       }
-    >
-      {/* Title */}
-      <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontSize: 20, fontWeight: 'bold' }}>Attendance</Text>
-        <Text style={{ fontSize: 14, color: 'gray' }}>
-          {currentMonth} {currentYear}
-        </Text>
-      </View>
+      return weekCopy;
+    });
 
-      {/* Month selector */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
-        <TouchableOpacity 
-          style={{ padding: 8 }}
-          onPress={() => changeMonth(-1)}
-          disabled={refreshing}
-        >
-          <Feather name="chevron-left" size={20} color={refreshing ? '#ccc' : 'black'} />
-        </TouchableOpacity>
-        <Text style={{ marginHorizontal: 12, fontWeight: 'bold', fontSize: 16 }}>
-          {currentMonth} {currentYear}
-        </Text>
-        <TouchableOpacity 
-          style={{ padding: 8 }}
-          onPress={() => changeMonth(1)}
-          disabled={refreshing}
-        >
-          <Feather name="chevron-right" size={20} color={refreshing ? '#ccc' : 'black'} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Generate Test Data Button (for development) */}
-      {__DEV__ && (
-        <TouchableOpacity 
-          onPress={handleGenerateTestData}
-          disabled={refreshing}
-          style={{
-            backgroundColor: '#0d47a1',
-            padding: 10,
-            borderRadius: 8,
-            alignItems: 'center',
-            marginBottom: 16,
-            opacity: refreshing ? 0.5 : 1,
-          }}
-        >
-          <Text style={{ color: 'white', fontWeight: '500' }}>
-            {refreshing ? 'Generating...' : 'Generate Test Data'}
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Weekday headers */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-        {weekdays.map((day, idx) => (
-          <Text key={idx} style={{ flex: 1, textAlign: 'center', fontWeight: '500', fontSize: 12 }}>{day}</Text>
-        ))}
-      </View>
-
-      {/* Calendar Grid */}
-      {calendarData.length > 0 ? (
-        <>
-          {calendarData.map((week, weekIdx) => (
+    return (
+      <>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+          {weekdays.map((day, idx) => (
+            <Text key={idx} style={{ flex: 1, textAlign: 'center', fontWeight: '500', fontSize: 12 }}>{day}</Text>
+          ))}
+        </View>
+        {normalizedWeeks.length > 0 ? (
+          normalizedWeeks.map((week, weekIdx) => (
             <View key={weekIdx} style={{ flexDirection: 'row', marginBottom: 8 }}>
               {week.map((day, dayIdx) => {
                 const { bg, text, icon } = getStatusStyle(day.status);
@@ -228,32 +289,107 @@ export default function AttendanceScreen() {
                 );
               })}
             </View>
-          ))}
-        </>
-      ) : (
-        <View style={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <Text>No attendance data available</Text>
+          ))
+        ) : (
+          <View style={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <Text>No attendance data available</Text>
+          </View>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#f5f5f5' }}
+      contentContainerStyle={{ padding: 16 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
+      <View style={styles.calendarContainer}>
+        {/* View Toggle */}
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            style={[
+              styles.toggleButton,
+              viewType === 'week' && styles.toggleButtonActive
+            ]}
+            onPress={() => setViewType('week')}>
+            <Text style={[
+              styles.toggleButtonText,
+              viewType === 'week' && styles.toggleButtonTextActive
+            ]}>
+              Week
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.toggleButton,
+              viewType === 'month' && styles.toggleButtonActive
+            ]}
+            onPress={() => setViewType('month')}>
+            <Text style={[
+              styles.toggleButtonText,
+              viewType === 'month' && styles.toggleButtonTextActive
+            ]}>
+              Month
+            </Text>
+          </TouchableOpacity>
         </View>
-      )}
+
+        {/* Date Range Selector */}
+        <View style={styles.dateRangeContainer}>
+          <TouchableOpacity onPress={() => changeDateRange(-1)} disabled={refreshing}>
+            <ChevronLeft size={24} color={refreshing ? '#ccc' : '#000'} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={{ flexDirection: 'row', alignItems: 'center' }}
+            onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateRangeText}>
+              {dateRangeText}
+            </Text>
+            <CalendarIcon size={16} style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={() => changeDateRange(1)} disabled={refreshing}>
+            <ChevronRight size={24} color={refreshing ? '#ccc' : '#000'} />
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={{ marginTop: 10 }}>Loading attendance data...</Text>
+          </View>
+        ) : viewType === 'week' ? (
+          renderWeekView()
+        ) : (
+          renderMonthView()
+        )}
+      </View>
 
       {/* Stats */}
-      <View style={{ marginTop: 16 }}>
-        <Text style={{ fontWeight: '600', fontSize: 14 }}>Total Days: {stats.totalDays} Days</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
-          <View style={{ width: 16, height: 16, backgroundColor: 'green', marginRight: 6 }} />
-          <Text style={{ fontSize: 14 }}>Total Present Days: {stats.presentDays} Days</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
-          <View style={{ width: 16, height: 16, backgroundColor: 'red', marginRight: 6 }} />
-          <Text style={{ fontSize: 14 }}>Total Absent Days: {stats.absentDays} Days</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
-          <View style={{ width: 16, height: 16, backgroundColor: 'lightgray', marginRight: 6 }} />
-          <Text style={{ fontSize: 14 }}>Saturdays: {stats.saturdays} Days</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
-          <View style={{ width: 16, height: 16, backgroundColor: 'gold', marginRight: 6 }} />
-          <Text style={{ fontSize: 14 }}>Holidays: {stats.holidays} Days</Text>
+      <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 16 }}>
+        <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 12 }}>Summary</Text>
+        <View style={{ marginTop: 4 }}>
+          <Text style={{ fontWeight: '600', fontSize: 14 }}>Total Days: {stats.totalDays} Days</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+            <View style={{ width: 16, height: 16, backgroundColor: '#4CAF50', marginRight: 6, borderRadius: 8 }} />
+            <Text style={{ fontSize: 14 }}>Present: {stats.presentDays} Days</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+            <View style={{ width: 16, height: 16, backgroundColor: '#F44336', marginRight: 6, borderRadius: 8 }} />
+            <Text style={{ fontSize: 14 }}>Absent: {stats.absentDays} Days</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+            <View style={{ width: 16, height: 16, backgroundColor: '#E0E0E0', marginRight: 6, borderRadius: 8 }} />
+            <Text style={{ fontSize: 14 }}>Saturdays: {stats.saturdays} Days</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+            <View style={{ width: 16, height: 16, backgroundColor: '#FFF9C4', marginRight: 6, borderRadius: 8 }} />
+            <Text style={{ fontSize: 14 }}>Holidays: {stats.holidays} Days</Text>
+          </View>
         </View>
       </View>
     </ScrollView>

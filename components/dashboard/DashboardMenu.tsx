@@ -8,6 +8,8 @@ const menuItems = [
   { label: 'Assignment', icon: ClipboardList, href: '/assignments' },
   { label: 'Teacher', icon: Users, href: '/teachers' },
   { label: 'Calendar', icon: CalendarDays, href: '/calendar' },
+  { label: 'Routine', icon: CalendarDays, href: '/routine' },
+  { label: 'Notice', icon: CalendarDays, href: '/notice' }
 ];
 
 export function DashboardMenu() {
